@@ -7,6 +7,7 @@ from pathlib import Path
 import numpy as np
 import nibabel as nib
 import pytest
+from undistortme import denoise as dn
 from undistortme import pipeline as cp
 
 
@@ -27,9 +28,48 @@ def check_dict(monkeypatch):
         "dryrun": False,
         "two_echo": False,
         "mask": False,
+        "denoise": None,
     }
     monkeypatch.setattr(cp, "check_dict", d, raising=False)
     return d
+
+
+# ===========================================================================
+# Shared data contracts
+#
+# _make_bids_run (legacy layout) and _make_bids_dwi_dataset (BIDS layout)
+# must produce EQUIVALENT runs so that the snapshot-reuse tests can compare
+# staged-BIDS command batches against the legacy goldens.  The pieces both
+# builders share are defined once here so the contract is structural.
+# ===========================================================================
+
+# Sidecar fields common to every echo (per-echo fields - EchoNumber,
+# EchoTime, PhaseEncodingDirection - are added by the builders).
+SIDECAR_COMMON = {
+    "TotalReadoutTime": 0.106487,
+    "PulseSequenceName": "ep_seg_35",
+    "SeriesDescription": "ME_GRE",
+    "ImageType": ["ORIGINAL", "PRIMARY", "M"],
+    "ImageOrientationPatientDICOM": [1, 0, 0, 0, 1, 0],
+}
+
+# Echo times assigned to echoes 1..4.
+DEFAULT_TES = (0.07, 0.09, 0.11, 0.13)
+
+
+def seed_for(echo, vol):
+    """RNG seed for volume ``vol`` (1-based) of ``echo`` in both builders."""
+    return echo * 100 + vol
+
+
+def _seeded_data(seed, shape=(8, 8, 8)):
+    """Deterministic float32 voxel data for ``seed``."""
+    return np.random.default_rng(seed).random(shape, dtype=np.float32)
+
+
+def _bval_text(bvals):
+    """The exact on-disk .bval encoding both builders write."""
+    return " ".join(str(b) for b in bvals)
 
 
 @pytest.fixture
@@ -48,7 +88,7 @@ def tiny_nii():
         if fill is not None:
             data = np.full(shape, float(fill), dtype=np.float32)
         else:
-            data = np.random.default_rng(seed).random(shape, dtype=np.float32)
+            data = _seeded_data(seed, shape)
         nib.save(nib.Nifti1Image(data, np.eye(4)), str(path))
         return str(path)
 
@@ -68,11 +108,26 @@ def tiny_nii():
 # The contrast-match subcommand baked into the pipeline's commands.
 CMATCH_PATH = cp.CONTRASTMATCH_CMD
 
+# The denoise subcommand; like CMATCH_PATH it embeds sys.executable, so it is
+# always replaced by a placeholder before snapshotting.
+DENOISE_PATH = cp.DENOISE_CMD
 
-def _make_bids_run(tmp_path, tiny_nii, *, n_echoes=3,
-                   te=(0.07, 0.09, 0.11, 0.13), phase_dir="j-", bvals=None,
-                   n_avgs=1, subject="sub-01", session="ses-01", run="run-01",
-                   output_root=None, deriv_root=None):
+
+def _make_bids_run(
+    tmp_path,
+    tiny_nii,
+    *,
+    n_echoes=3,
+    te=DEFAULT_TES,
+    phase_dir="j-",
+    bvals=None,
+    n_avgs=1,
+    subject="sub-01",
+    session="ses-01",
+    run="run-01",
+    output_root=None,
+    deriv_root=None,
+):
     """Build a BIDS-ish run tree the pipeline can glob and pin.
 
     Layout produced under ``{output_root}/{subject}/{session}/{run}/``:
@@ -104,19 +159,14 @@ def _make_bids_run(tmp_path, tiny_nii, *, n_echoes=3,
             "EchoNumber": e,
             "EchoTime": te[e - 1],
             "PhaseEncodingDirection": phase_dir,
-            "TotalReadoutTime": 0.106487,
-            "PulseSequenceName": "ep_seg_35",
-            "SeriesDescription": "ME_GRE",
-            "ImageType": ["ORIGINAL", "PRIMARY", "M"],
-            "ImageOrientationPatientDICOM": [1, 0, 0, 0, 1, 0],
+            **SIDECAR_COMMON,
         }
         (run_dir / f"{stem}.json").write_text(json.dumps(data))
         if bvals is not None:
-            (run_dir / f"{stem}.bval").write_text(
-                " ".join(str(b) for b in bvals))
+            (run_dir / f"{stem}.bval").write_text(_bval_text(bvals))
         for i in range(1, n_vols + 1):
             bb = str(i).zfill(num_digits)
-            tiny_nii(run_dir / f"{stem}_{bb}.nii", seed=(e * 100 + i))
+            tiny_nii(run_dir / f"{stem}_{bb}.nii", seed=seed_for(e, i))
 
     return {
         "output_dir": str(out),
@@ -135,6 +185,153 @@ def bids_run(tmp_path, tiny_nii):
 
     def _build(**kwargs):
         return _make_bids_run(tmp_path, tiny_nii, **kwargs)
+
+    return _build
+
+
+def _make_bids_dwi_dataset(
+    tmp_path,
+    *,
+    session="01",
+    n_echoes=3,
+    n_vols=1,
+    acq=None,
+    parts=None,
+    bvals=None,
+    gz=True,
+    phase_dirs=None,
+    sidecar_level="leaf",
+    include_echo_number=False,
+    echo_in_acq=False,
+):
+    """Build a real (gzipped-4D) BIDS dwi dataset for the ingest adapter.
+
+    Layout produced under ``{tmp_path}/bids/``::
+
+        dataset_description.json
+        sub-01/[ses-{session}/]dwi/
+            sub-01[_ses-..][_acq-..]_run-01_echo-{e}[_part-..]_dwi.nii[.gz]
+            + one JSON sidecar per image (or higher-level sidecars, see
+              ``sidecar_level``) and optional .bval/.bvec per echo.
+
+    Knobs:
+      * ``session=None`` -> no session level (tests ses-01 synthesis).
+      * ``acq`` -> extra acq- entity label (None omits it).
+      * ``parts`` -> iterable of part labels (e.g. ("mag", "phase")); each
+        echo is written once per part. None omits the part entity.
+      * ``bvals`` -> list of b-values; sets n_vols = len(bvals) and writes
+        .bval/.bvec companions per echo.
+      * ``gz`` -> .nii.gz (default) vs plain .nii.
+      * ``phase_dirs`` -> per-echo PhaseEncodingDirection strings; the
+        default alternates sign with echo parity ("j", "j-", "j", ...),
+        matching the pipeline's blip-sign assumption.
+      * ``sidecar_level`` -> "leaf" (one full sidecar next to each image),
+        "sub" (per-echo sidecars at the subject level), or "split" (common
+        fields in a root-level dwi.json, per-echo fields at the leaf).
+      * ``include_echo_number`` -> whether sidecars carry EchoNumber
+        (default False: tests the adapter's EchoNumber injection).
+      * ``echo_in_acq`` -> encode the echo as ``acq-e{n}`` instead of an
+        ``echo-`` entity (for --echo-from-acq tests); overrides ``acq``.
+
+    Volume ``i`` of echo ``e`` uses ``seed_for(e, i)`` - the same seeds
+    ``_make_bids_run`` gives ``tiny_nii`` - so command batches from staged
+    data can be compared against the legacy-layout goldens.
+
+    Returns a dict with bids_dir, subject/session tokens (session synthesis
+    NOT applied: "session" is None when the dataset has no session level),
+    dwi_dir, n_vols and the list of image paths.
+    """
+    if bvals is not None:
+        n_vols = len(bvals)
+
+    bids_dir = tmp_path / "bids"
+    sub_tok = "sub-01"
+    ses_tok = f"ses-{session}" if session is not None else None
+    dwi_dir = bids_dir / sub_tok / (ses_tok or "") / "dwi"
+    dwi_dir.mkdir(parents=True, exist_ok=True)
+    (bids_dir / "dataset_description.json").write_text(
+        json.dumps(
+            {
+                "Name": "undistortme test dataset",
+                "BIDSVersion": "1.9.0",
+            }
+        )
+    )
+
+    if phase_dirs is None:
+        phase_dirs = ["j" if e % 2 == 1 else "j-" for e in range(1, n_echoes + 1)]
+
+    if sidecar_level == "split":
+        (bids_dir / "dwi.json").write_text(json.dumps(SIDECAR_COMMON))
+
+    image_paths = []
+    for e in range(1, n_echoes + 1):
+        chunks = [sub_tok]
+        if ses_tok:
+            chunks.append(ses_tok)
+        if echo_in_acq:
+            chunks.append(f"acq-e{e}")
+        elif acq is not None:
+            chunks.append(f"acq-{acq}")
+        chunks.append("run-01")
+        if not echo_in_acq:
+            chunks.append(f"echo-{e}")
+
+        sidecar = {
+            "EchoTime": DEFAULT_TES[e - 1],
+            "PhaseEncodingDirection": phase_dirs[e - 1],
+        }
+        if sidecar_level != "split":
+            sidecar.update(SIDECAR_COMMON)
+        if include_echo_number:
+            sidecar["EchoNumber"] = e
+
+        data = np.stack(
+            [_seeded_data(seed_for(e, i)) for i in range(1, n_vols + 1)], axis=-1
+        )
+
+        for part in parts if parts is not None else [None]:
+            img_chunks = list(chunks)
+            if part is not None:
+                img_chunks.append(f"part-{part}")
+            stem = "_".join(img_chunks) + "_dwi"
+            ext = ".nii.gz" if gz else ".nii"
+            img_path = dwi_dir / f"{stem}{ext}"
+            nib.save(nib.Nifti1Image(data, np.eye(4)), str(img_path))
+            image_paths.append(str(img_path))
+
+            if sidecar_level == "sub":
+                # subject-level sidecar: only entities shared with the
+                # image (sub + echo), so it applies via inheritance
+                name = f"{sub_tok}_echo-{e}_dwi.json"
+                (bids_dir / sub_tok / name).write_text(json.dumps(sidecar))
+            else:
+                (dwi_dir / f"{stem}.json").write_text(json.dumps(sidecar))
+
+            if bvals is not None:
+                (dwi_dir / f"{stem}.bval").write_text(_bval_text(bvals))
+                (dwi_dir / f"{stem}.bvec").write_text(
+                    "\n".join(" ".join("0" for _ in bvals) for _ in range(3))
+                )
+
+    return {
+        "bids_dir": str(bids_dir),
+        "subject": sub_tok,
+        "session": ses_tok,
+        "dwi_dir": str(dwi_dir),
+        "n_vols": n_vols,
+        "n_echoes": n_echoes,
+        "image_paths": image_paths,
+        "tmp_path": str(tmp_path),
+    }
+
+
+@pytest.fixture
+def bids_dwi_dataset(tmp_path):
+    """Factory building a real BIDS dwi dataset (see _make_bids_dwi_dataset)."""
+
+    def _build(**kwargs):
+        return _make_bids_dwi_dataset(tmp_path, **kwargs)
 
     return _build
 
@@ -213,6 +410,18 @@ def slicing_recorder(monkeypatch, tiny_nii):
             for n in range(1, 4):
                 fname = f"{base}_axis-2_slice-padded-{str(n).zfill(3)}.nii"
                 tiny_nii(out_dir / fname, seed=1000 + n)
+        elif " -m undistortme.denoise " in cmd:
+            # "... -m {method} -i {nii...} -o {out_dir} --suffix {suffix}
+            #  [-b {bvals...}]": the real denoiser writes one output per input,
+            # named by denoise.output_path, and handle_slicing later slices
+            # those files, so they must exist on disk.
+            out_dir = tokens[tokens.index("-o") + 1]
+            suffix = tokens[tokens.index("--suffix") + 1]
+            i_start = tokens.index("-i") + 1
+            i_end = tokens.index("-o")
+            Path(out_dir).mkdir(parents=True, exist_ok=True)
+            for nii_path in tokens[i_start:i_end]:
+                tiny_nii(dn.output_path(nii_path, out_dir, suffix), seed=3000)
         elif cmd.startswith("fslmaths ") and " -mas " in cmd:
             # tokens[-1] is assumed to be the output path, mirroring the current
             # "fslmaths {nii} -mas {mask} {out}" command shape.  If the masking
@@ -250,7 +459,7 @@ def _normalize(calls, replacements):
 
     ``replacements`` is an iterable of ``(find, placeholder)`` pairs.
     """
-    reps = list(replacements) + [(CMATCH_PATH, "<CMATCH>")]
+    reps = list(replacements) + [(CMATCH_PATH, "<CMATCH>"), (DENOISE_PATH, "<DENOISE>")]
     reps.sort(key=lambda kv: len(kv[0]), reverse=True)
 
     lines = []
@@ -272,6 +481,41 @@ def normalize():
     return _normalize
 
 
+def _reps(info):
+    """Path replacements for normalize(): longest-find-first handled inside."""
+    return [
+        (info["deriv_dir"], "<DERIV>"),
+        (info["output_dir"], "<OUT>"),
+        (info["tmp_path"], "<TMP>"),
+    ]
+
+
+@pytest.fixture
+def reps():
+    """Return the ``_reps(info)`` path-placeholder builder."""
+    return _reps
+
+
+def _run_process_run(info, mask_dir=None, cutoff=1000, config="b02b0.cnf"):
+    """Call process_run with the positional arguments a bids_run dict implies."""
+    cp.process_run(
+        info["subject"],
+        info["session"],
+        info["run"],
+        info["output_dir"],
+        info["deriv_dir"],
+        config,
+        mask_dir,
+        cutoff,
+    )
+
+
+@pytest.fixture
+def run_process_run():
+    """Return the ``_run_process_run(info, ...)`` driver."""
+    return _run_process_run
+
+
 _SNAPSHOT_DIR = Path(__file__).parent / "_snapshots"
 
 
@@ -290,8 +534,8 @@ def _assert_snapshot(name, text):
 
     if not path.exists():
         pytest.fail(
-            f"Snapshot {path.name} missing. "
-            f"Regenerate with UPDATE_SNAPSHOTS=1.")
+            f"Snapshot {path.name} missing. Regenerate with UPDATE_SNAPSHOTS=1."
+        )
 
     expected = path.read_text()
     if text != expected:
@@ -301,7 +545,8 @@ def _assert_snapshot(name, text):
                 text.splitlines(keepends=True),
                 fromfile=f"golden/{path.name}",
                 tofile="actual",
-            ))
+            )
+        )
         pytest.fail(f"Snapshot mismatch for {path.name}:\n{diff}")
 
 

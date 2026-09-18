@@ -28,6 +28,7 @@ from undistortme import pipeline as cp
 # find_closest_volume  (SSIM-based; returns argmax)
 # ===========================================================================
 
+
 class TestFindClosestVolume:
     """SSIM-based closest-volume finder; should return the index of the most
     similar volume (highest SSIM).
@@ -38,15 +39,15 @@ class TestFindClosestVolume:
 
         The identical copy has SSIM=1.0; all others are < 1.0 for random data.
         """
-        rng  = np.random.default_rng(0)
-        img  = rng.random((8, 8, 8), dtype=np.float32)
+        rng = np.random.default_rng(0)
+        img = rng.random((8, 8, 8), dtype=np.float32)
 
         # Build comparisons: [noise, noise, img_copy, noise]
         comparisons = [
-            rng.random((8, 8, 8), dtype=np.float32),   # index 0
-            rng.random((8, 8, 8), dtype=np.float32),   # index 1
-            img.copy(),                                  # index 2  ← target
-            rng.random((8, 8, 8), dtype=np.float32),   # index 3
+            rng.random((8, 8, 8), dtype=np.float32),  # index 0
+            rng.random((8, 8, 8), dtype=np.float32),  # index 1
+            img.copy(),  # index 2  ← target
+            rng.random((8, 8, 8), dtype=np.float32),  # index 3
         ]
 
         result = cp.find_closest_volume(img, comparisons)
@@ -57,15 +58,15 @@ class TestFindClosestVolume:
 
     def test_most_similar_volume_wins(self):
         """Among two noise arrays and a high-similarity variant, the variant wins."""
-        rng  = np.random.default_rng(42)
-        img  = rng.random((8, 8, 8), dtype=np.float32)
+        rng = np.random.default_rng(42)
+        img = rng.random((8, 8, 8), dtype=np.float32)
 
         # slight perturbation — much more similar to img than pure noise
         similar = img + rng.random((8, 8, 8), dtype=np.float32) * 0.01
 
         comparisons = [
             rng.random((8, 8, 8), dtype=np.float32),  # index 0 — unrelated
-            similar,                                    # index 1 — very similar
+            similar,  # index 1 — very similar
         ]
 
         result = cp.find_closest_volume(img, comparisons)
@@ -75,8 +76,8 @@ class TestFindClosestVolume:
 
     def test_returns_argmax_not_value(self):
         """Return type is np.intp (an integer index), not the SSIM value itself."""
-        rng  = np.random.default_rng(7)
-        img  = rng.random((8, 8, 8), dtype=np.float32)
+        rng = np.random.default_rng(7)
+        img = rng.random((8, 8, 8), dtype=np.float32)
         comp = [img.copy()]
 
         result = cp.find_closest_volume(img, comp)
@@ -88,8 +89,8 @@ class TestFindClosestVolume:
     def test_first_of_two_identical_comparisons(self):
         """When two comparisons are equally similar (both identical), argmax
         returns the first (index 0) due to np.argmax tie-breaking behavior."""
-        rng  = np.random.default_rng(11)
-        img  = rng.random((8, 8, 8), dtype=np.float32)
+        rng = np.random.default_rng(11)
+        img = rng.random((8, 8, 8), dtype=np.float32)
 
         comparisons = [img.copy(), img.copy()]  # both identical
 
@@ -102,6 +103,7 @@ class TestFindClosestVolume:
 # find_closest_volume_nmi  (NMI-based; returns argmax = most similar)
 # ===========================================================================
 
+
 class TestFindClosestVolumeNmi:
     """NMI-based closest-volume finder: argmax = most similar volume."""
 
@@ -113,19 +115,18 @@ class TestFindClosestVolumeNmi:
           comp[0] = identical copy of img       → HIGH NMI  (most informative)
           comp[1] = independent random array    → LOW NMI   (least informative)
         """
-        rng  = np.random.default_rng(0)
-        img  = rng.random((8, 8, 8), dtype=np.float32)
+        rng = np.random.default_rng(0)
+        img = rng.random((8, 8, 8), dtype=np.float32)
 
-        identical    = img.copy()                          # NMI should be max
-        independent  = rng.random((8, 8, 8), dtype=np.float32)   # NMI should be low
+        identical = img.copy()  # NMI should be max
+        independent = rng.random((8, 8, 8), dtype=np.float32)  # NMI should be low
 
         comparisons = [identical, independent]
 
         result = cp.find_closest_volume_nmi(img, comparisons)
 
         assert result == 0, (
-            f"expected index 0 (the identical, highest-NMI volume) "
-            f"but got {result}"
+            f"expected index 0 (the identical, highest-NMI volume) but got {result}"
         )
 
     def test_most_similar_of_three_comparisons(self):
@@ -134,25 +135,25 @@ class TestFindClosestVolumeNmi:
         Ordering: [identical, similar, independent]
         Expected argmax: index 0 (identical → highest NMI with the target).
         """
-        rng  = np.random.default_rng(5)
-        img  = rng.random((8, 8, 8), dtype=np.float32)
+        rng = np.random.default_rng(5)
+        img = rng.random((8, 8, 8), dtype=np.float32)
 
         comparisons = [
-            img.copy(),                                         # index 0: identical  (high NMI)
-            img + rng.random((8, 8, 8), dtype=np.float32) * 0.05,  # index 1: similar (medium NMI)
-            rng.random((8, 8, 8), dtype=np.float32),           # index 2: unrelated  (low NMI)
+            img.copy(),  # index 0: identical  (high NMI)
+            img
+            + rng.random((8, 8, 8), dtype=np.float32)
+            * 0.05,  # index 1: similar (medium NMI)
+            rng.random((8, 8, 8), dtype=np.float32),  # index 2: unrelated  (low NMI)
         ]
 
         result = cp.find_closest_volume_nmi(img, comparisons)
 
-        assert result == 0, (
-            f"Expected index 0 (identical, highest NMI); got {result}."
-        )
+        assert result == 0, f"Expected index 0 (identical, highest NMI); got {result}."
 
     def test_returns_integer_index(self):
         """Return value is a numpy integer index, not the NMI score."""
-        rng  = np.random.default_rng(99)
-        img  = rng.random((8, 8, 8), dtype=np.float32)
+        rng = np.random.default_rng(99)
+        img = rng.random((8, 8, 8), dtype=np.float32)
         comp = [img.copy()]
 
         result = cp.find_closest_volume_nmi(img, comp)
@@ -162,8 +163,8 @@ class TestFindClosestVolumeNmi:
 
     def test_single_comparison_returns_0(self):
         """With exactly one comparison the index must be 0 regardless."""
-        rng  = np.random.default_rng(13)
-        img  = rng.random((8, 8, 8), dtype=np.float32)
+        rng = np.random.default_rng(13)
+        img = rng.random((8, 8, 8), dtype=np.float32)
         comp = [rng.random((8, 8, 8), dtype=np.float32)]
 
         result = cp.find_closest_volume_nmi(img, comp)
@@ -173,6 +174,7 @@ class TestFindClosestVolumeNmi:
 # ===========================================================================
 # find_closest_volume_nmi: data-driven selection with a wide margin
 # ===========================================================================
+
 
 def test_nmi_selection_unambiguous_margin():
     """Pin NMI selection on data where the choice is clear-cut.
@@ -185,14 +187,16 @@ def test_nmi_selection_unambiguous_margin():
     """
     rng = np.random.default_rng(7)
     base = rng.random((16, 16, 8))
-    near_copy = base + rng.normal(0, 0.01, base.shape)      # high NMI vs base
-    unrelated = rng.random((16, 16, 8))                     # low NMI vs base
+    near_copy = base + rng.normal(0, 0.01, base.shape)  # high NMI vs base
+    unrelated = rng.random((16, 16, 8))  # low NMI vs base
 
     from skimage.metrics import normalized_mutual_information as nmi
+
     nmi_copy = nmi(base, near_copy)
     nmi_unrel = nmi(base, unrelated)
-    assert (nmi_copy - nmi_unrel) / nmi_unrel > 0.10, \
+    assert (nmi_copy - nmi_unrel) / nmi_unrel > 0.10, (
         "test inputs no longer discriminate; rebuild them"
+    )
 
     idx = cp.find_closest_volume_nmi(base, [near_copy, unrelated])
     assert idx == 0  # the near-copy is the most similar volume

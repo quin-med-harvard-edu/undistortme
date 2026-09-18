@@ -23,25 +23,26 @@ def _reset_failed_commands(monkeypatch):
 # topup_threads / default_jobs
 # ===========================================================================
 
+
 class TestTopupThreads:
     """nthr = clamp(round(jobs * oversub / min(jobs, batch)), 1, jobs)."""
 
     @pytest.mark.parametrize(
         "jobs,oversub,batch,expected",
         [
-            (8, 4.0, 1, 8),    # single command: full jobs (clamped)
-            (8, 4.0, 8, 4),    # saturated batch: jobs*4/8
-            (8, 4.0, 32, 4),   # batch beyond jobs: concurrency capped at jobs
-            (8, 1.0, 8, 1),    # strict budget: one thread each
+            (8, 4.0, 1, 8),  # single command: full jobs (clamped)
+            (8, 4.0, 8, 4),  # saturated batch: jobs*4/8
+            (8, 4.0, 32, 4),  # batch beyond jobs: concurrency capped at jobs
+            (8, 1.0, 8, 1),  # strict budget: one thread each
             (8, 2.0, 8, 2),
-            (8, 0.01, 8, 1),   # floor at 1
-            (2, 8.0, 1, 2),    # never exceeds jobs
+            (8, 0.01, 8, 1),  # floor at 1
+            (2, 8.0, 1, 2),  # never exceeds jobs
         ],
     )
     def test_budget_formula(self, monkeypatch, jobs, oversub, batch, expected):
         monkeypatch.setattr(
-            cp, "check_dict",
-            {"jobs": jobs, "oversubscribe": oversub}, raising=False)
+            cp, "check_dict", {"jobs": jobs, "oversubscribe": oversub}, raising=False
+        )
         assert cp.topup_threads(batch) == expected
 
     def test_fallback_to_defaults(self, monkeypatch):
@@ -59,6 +60,7 @@ class TestTopupThreads:
 # ===========================================================================
 # run_bash_command
 # ===========================================================================
+
 
 class TestRunBashCommand:
     def test_dryrun_returns_zero_without_running(self, tmp_path):
@@ -80,6 +82,7 @@ class TestRunBashCommand:
 # ===========================================================================
 # Dispatchers (REAL execution) + failure accumulation
 # ===========================================================================
+
 
 class TestDispatcherFailurePropagation:
     def _gates(self, monkeypatch, **over):

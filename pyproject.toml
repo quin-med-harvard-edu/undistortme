@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "undistortme"
-version = "0.1.0"
+version = "0.2.0"
 description = "Susceptibility distortion correction for multi-echo EPI using FSL TOPUP, with contrast matching and slice-by-slice modes"
 readme = "README.md"
 license = { text = "MIT" }
@@ -21,11 +21,17 @@ dependencies = [
     "pandas",
     "nibabel",
     "scikit-image",
+    "scipy",
     "tqdm",
 ]
 
 [project.optional-dependencies]
 test = ["pytest"]
+# --denoise mppca; --denoise median needs only scipy
+# floor = the dipy version mppca was evaluated against (RESULTS.md in code/denoise_eval)
+denoise = ["dipy>=1.12"]
+# formatting: pinned so `ruff format` is byte-identical on every machine
+dev = ["ruff==0.16.6"]
 
 [project.urls]
 Homepage = "https://github.com/liamtimms/undistortme"
@@ -35,9 +41,14 @@ Issues = "https://github.com/liamtimms/undistortme/issues"
 [project.scripts]
 undistortme = "undistortme.pipeline:main"
 undistortme-contrastmatch = "undistortme.contrastmatch:main"
+undistortme-denoise = "undistortme.denoise:main"
+undistortme-bidsify = "undistortme.bids:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+undistortme = ["configs/*.cnf"]
 
 [tool.pytest.ini_options]
 addopts = "--strict-markers -m 'not slow and not needs_fsl'"
@@ -46,3 +57,7 @@ markers = [
     "needs_fsl: requires real FSL binaries on PATH (excluded by default)",
 ]
 testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py310"

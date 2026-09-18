@@ -10,8 +10,7 @@ import numpy as np
 
 def get_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description=
-        "Contrast-match two echoes of a multi-echo dataset to a new TE by fitting a function to them and interpolating the new values at each voxel of the image"
+        description="Contrast-match two echoes of a multi-echo dataset to a new TE by fitting a function to them and interpolating the new values at each voxel of the image"
     )
     parser.add_argument(
         "-i",
@@ -47,8 +46,7 @@ def get_args() -> argparse.Namespace:
         type=str,
         required=False,
         default="linear",
-        help=
-        "Method to use for contrast matching. Options are 'linear' or 'geomean'. Default is 'linear'.",
+        help="Method to use for contrast matching. Options are 'linear' or 'geomean'. Default is 'linear'.",
     )
     return parser.parse_args()
 
@@ -59,8 +57,7 @@ def check_args(args):
     for i in range(len(args.input)):
         print(args.input[i])
         if not os.path.isfile(args.input[i]):
-            raise ValueError("Input image {} does not exist".format(
-                args.input[i]))
+            raise ValueError("Input image {} does not exist".format(args.input[i]))
     if os.path.isfile(args.output):
         raise ValueError("Output image {} already exists".format(args.output))
 
@@ -118,8 +115,7 @@ def simple_line(times, imgs):
     return slope_3d, intercept_3d
 
 
-def geomean_across_images(times: np.ndarray,
-                          imgs: list[np.ndarray]) -> np.ndarray:
+def geomean_across_images(times: np.ndarray, imgs: list[np.ndarray]) -> np.ndarray:
     # Method introduced in Weiskopf et al. 2005
     # https://doi.org/10.1016/j.neuroimage.2004.12.012
     c1 = (times[2] - times[1]) / (times[2] - times[0])
@@ -129,8 +125,9 @@ def geomean_across_images(times: np.ndarray,
     return np.exp(c1 * np.log(img1_offset) + c3 * np.log(img3_offset)) - 1
 
 
-def construct_new_image(slope_3d: np.ndarray, intercept_3d: np.ndarray,
-                        new_te: float) -> np.ndarray:
+def construct_new_image(
+    slope_3d: np.ndarray, intercept_3d: np.ndarray, new_te: float
+) -> np.ndarray:
     new_image = slope_3d * new_te + intercept_3d
     return new_image
 
@@ -160,8 +157,7 @@ def main() -> None:
         imgs: list[np.ndarray] = []
         for img in input_images:
             imgs.append(load_image(img))
-        times = np.array([input_tes[0], new_te,
-                          input_tes[-1]]).astype(np.float64)
+        times = np.array([input_tes[0], new_te, input_tes[-1]]).astype(np.float64)
         if len(imgs) != 2:
             print("Not implemented for more than two images yet")
             exit(1)

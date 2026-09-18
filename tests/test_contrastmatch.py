@@ -39,6 +39,7 @@ from undistortme import contrastmatch as cm
 # Module-level constants and helpers
 # ---------------------------------------------------------------------------
 
+
 def run_cli(*args):
     """Run contrastmatch as a subprocess and return the CompletedProcess."""
     return subprocess.run(
@@ -51,6 +52,7 @@ def run_cli(*args):
 # ===========================================================================
 # 1 – simple_line recovers exact linear model
 # ===========================================================================
+
 
 def test_simple_line_recovers_exact_linear():
     """slope and intercept from simple_line match the generating linear model."""
@@ -69,7 +71,9 @@ def test_simple_line_recovers_exact_linear():
     slope, intercept = cm.simple_line([t1, t2], [img1, img2])
 
     assert np.allclose(slope, a), "simple_line slope must match generating slope"
-    assert np.allclose(intercept, b), "simple_line intercept must match generating intercept"
+    assert np.allclose(intercept, b), (
+        "simple_line intercept must match generating intercept"
+    )
 
     # construct_new_image should recover the value at a new TE
     new_te = 0.09
@@ -85,6 +89,7 @@ def test_simple_line_recovers_exact_linear():
 # 2 – linregress_across_images recovers slopes from exact linear model
 # ===========================================================================
 
+
 def test_linregress_across_images_recovers_slopes():
     """np.polyfit per-voxel recovers exact slopes and intercepts for >=3 images."""
     shape = (4, 4, 2)  # tiny so the voxel loop is fast
@@ -99,7 +104,9 @@ def test_linregress_across_images_recovers_slopes():
     slope_3d, intercept_3d = cm.linregress_across_images(times, imgs)
 
     assert slope_3d.shape == shape, "returned slope shape must match image shape"
-    assert intercept_3d.shape == shape, "returned intercept shape must match image shape"
+    assert intercept_3d.shape == shape, (
+        "returned intercept shape must match image shape"
+    )
 
     assert np.allclose(slope_3d, a, atol=1e-5), (
         "linregress_across_images slope must recover generating slope"
@@ -112,6 +119,7 @@ def test_linregress_across_images_recovers_slopes():
 # ===========================================================================
 # 3 – geomean_across_images: equal inputs return the input
 # ===========================================================================
+
 
 def test_geomean_equal_images_identity():
     """When both images are the same constant, geomean returns that constant.
@@ -133,13 +141,14 @@ def test_geomean_equal_images_identity():
     result = cm.geomean_across_images(times, [img, img])
 
     assert np.allclose(result, v), (
-        f"geomean of equal inputs must return the input value; got {result[0,0,0]}"
+        f"geomean of equal inputs must return the input value; got {result[0, 0, 0]}"
     )
 
 
 # ===========================================================================
 # 4 – geomean_across_images: known nontrivial values
 # ===========================================================================
+
 
 def test_geomean_known_values():
     """Independent hand-computation of geomean for a nontrivial case.
@@ -164,18 +173,19 @@ def test_geomean_known_values():
     result = cm.geomean_across_images(times, [img1, img2])
 
     # Hand-computed independently of the function
-    c1 = (t2 - t1) / (t2 - t0)   # = 0.5
-    c3 = (t1 - t0) / (t2 - t0)   # = 0.5
+    c1 = (t2 - t1) / (t2 - t0)  # = 0.5
+    c3 = (t1 - t0) / (t2 - t0)  # = 0.5
     expected = np.exp(c1 * np.log(3.0) + c3 * np.log(5.0)) - 1.0  # = sqrt(15) - 1
 
     assert np.allclose(result, expected, atol=1e-12), (
-        f"geomean result {result[0,0,0]!r} != hand-computed {expected!r}"
+        f"geomean result {result[0, 0, 0]!r} != hand-computed {expected!r}"
     )
 
 
 # ===========================================================================
 # 5 – error / exit-path characterization
 # ===========================================================================
+
 
 def test_unknown_method_exits_with_code_1(tmp_path, tiny_nii):
     """main() calls exit(1) for unrecognised method -> process exits with code 1.
@@ -188,16 +198,25 @@ def test_unknown_method_exits_with_code_1(tmp_path, tiny_nii):
     out = str(tmp_path / "out.nii")
 
     result = run_cli(
-        "-i", img1, img2,
-        "-t", "0.07", "0.11",
-        "-n", "0.09",
-        "-o", out,
-        "-m", "bogusmethod",
+        "-i",
+        img1,
+        img2,
+        "-t",
+        "0.07",
+        "0.11",
+        "-n",
+        "0.09",
+        "-o",
+        out,
+        "-m",
+        "bogusmethod",
     )
     assert result.returncode == 1, (
         f"Expected exit code 1 for unknown method, got {result.returncode}\n"
         f"stdout: {result.stdout}\nstderr: {result.stderr}"
     )
+
+
 def test_cli_linear_end_to_end(tmp_path):
     """Full subprocess round-trip for the linear method with a known linear model.
 
@@ -221,11 +240,18 @@ def test_cli_linear_end_to_end(tmp_path):
     nib.save(nib.Nifti1Image(img2_data, np.eye(4)), img2_path)
 
     result = run_cli(
-        "-i", img1_path, img2_path,
-        "-t", str(t1), str(t2),
-        "-n", str(new_te),
-        "-o", out_path,
-        "-m", "linear",
+        "-i",
+        img1_path,
+        img2_path,
+        "-t",
+        str(t1),
+        str(t2),
+        "-n",
+        str(new_te),
+        "-o",
+        out_path,
+        "-m",
+        "linear",
     )
 
     assert result.returncode == 0, (
@@ -249,13 +275,14 @@ def test_cli_linear_end_to_end(tmp_path):
 
     assert np.allclose(loaded, expected, atol=1e-4), (
         f"Output values must match np.round(a*new_te+b, 4)={expected_value}; "
-        f"got {loaded[0,0,0]}"
+        f"got {loaded[0, 0, 0]}"
     )
 
 
 # ===========================================================================
 # 7 – CLI cleanup: negatives are zeroed
 # ===========================================================================
+
 
 def test_cli_cleanup_negatives(tmp_path):
     """main() zeros out negative values produced by the linear extrapolation.
@@ -292,11 +319,18 @@ def test_cli_cleanup_negatives(tmp_path):
     nib.save(nib.Nifti1Image(img2_data, np.eye(4)), img2_path)
 
     result = run_cli(
-        "-i", img1_path, img2_path,
-        "-t", str(t1), str(t2),
-        "-n", str(new_te),
-        "-o", out_path,
-        "-m", "linear",
+        "-i",
+        img1_path,
+        img2_path,
+        "-t",
+        str(t1),
+        str(t2),
+        "-n",
+        str(new_te),
+        "-o",
+        out_path,
+        "-m",
+        "linear",
     )
 
     assert result.returncode == 0, (
@@ -309,7 +343,7 @@ def test_cli_cleanup_negatives(tmp_path):
 
     # After cleanup: all negative values must be zeroed to exactly 0.0
     assert np.all(loaded == 0.0), (
-        f"Expected all zeros after negative cleanup; got {loaded[0,0,0]!r}. "
+        f"Expected all zeros after negative cleanup; got {loaded[0, 0, 0]!r}. "
         "Deleting the 'new_image[new_image < 0] = 0' cleanup line would cause this to fail."
     )
 
@@ -317,6 +351,7 @@ def test_cli_cleanup_negatives(tmp_path):
 # ===========================================================================
 # 8 – CLI cleanup: rounding to 4 decimal places is observable
 # ===========================================================================
+
 
 def test_cli_cleanup_rounding(tmp_path):
     """main() rounds the output to 4 decimal places; deleting the round fails this test.
@@ -335,7 +370,7 @@ def test_cli_cleanup_rounding(tmp_path):
     t1, t2 = 0.0, 1.0
     new_te = 0.0
 
-    raw_expected = a * new_te + b   # = 0.123456789
+    raw_expected = a * new_te + b  # = 0.123456789
     rounded_expected = np.round(raw_expected, 4)  # = 0.1235
 
     assert rounded_expected != raw_expected, (
@@ -353,11 +388,18 @@ def test_cli_cleanup_rounding(tmp_path):
     nib.save(nib.Nifti1Image(img2_data.astype(np.float32), np.eye(4)), img2_path)
 
     result = run_cli(
-        "-i", img1_path, img2_path,
-        "-t", str(t1), str(t2),
-        "-n", str(new_te),
-        "-o", out_path,
-        "-m", "linear",
+        "-i",
+        img1_path,
+        img2_path,
+        "-t",
+        str(t1),
+        str(t2),
+        "-n",
+        str(new_te),
+        "-o",
+        out_path,
+        "-m",
+        "linear",
     )
 
     assert result.returncode == 0, (
@@ -371,7 +413,7 @@ def test_cli_cleanup_rounding(tmp_path):
     # Must equal the 4-decimal-rounded value ...
     assert np.allclose(loaded, rounded_expected, atol=1e-6), (
         f"Output must equal np.round({raw_expected}, 4)={rounded_expected}; "
-        f"got {loaded[0,0,0]!r}"
+        f"got {loaded[0, 0, 0]!r}"
     )
     # ... and must NOT equal the unrounded value (proves round() is active)
     assert not np.allclose(loaded, raw_expected, atol=1e-6), (
@@ -383,6 +425,7 @@ def test_cli_cleanup_rounding(tmp_path):
 # ===========================================================================
 # geomean input-count guard
 # ===========================================================================
+
 
 def test_geomean_rejects_more_than_two_inputs(tmp_path):
     """geomean with three inputs must exit non-zero, not silently use two.
@@ -398,8 +441,18 @@ def test_geomean_rejects_more_than_two_inputs(tmp_path):
         paths.append(str(p))
 
     result = run_cli(
-        "-i", *paths, "-t", "0.07", "0.09", "0.11", "-n", "0.08",
-        "-o", str(tmp_path / "out.nii"), "-m", "geomean",
+        "-i",
+        *paths,
+        "-t",
+        "0.07",
+        "0.09",
+        "0.11",
+        "-n",
+        "0.08",
+        "-o",
+        str(tmp_path / "out.nii"),
+        "-m",
+        "geomean",
     )
     assert result.returncode != 0
     assert not (tmp_path / "out.nii").exists()
@@ -415,8 +468,17 @@ def test_geomean_two_inputs_still_works(tmp_path):
         paths.append(str(p))
 
     result = run_cli(
-        "-i", *paths, "-t", "0.07", "0.11", "-n", "0.09",
-        "-o", str(tmp_path / "out.nii"), "-m", "geomean",
+        "-i",
+        *paths,
+        "-t",
+        "0.07",
+        "0.11",
+        "-n",
+        "0.09",
+        "-o",
+        str(tmp_path / "out.nii"),
+        "-m",
+        "geomean",
     )
     assert result.returncode == 0, result.stderr
     assert (tmp_path / "out.nii").exists()

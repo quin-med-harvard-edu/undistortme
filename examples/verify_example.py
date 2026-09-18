@@ -22,6 +22,7 @@ measured runs: TOPUP's result varies slightly with the FSL build/CPU
 volume correlates at <= 0.992. 0.995 separates the two cleanly. Requires
 numpy and nibabel (installed with undistortme).
 """
+
 import glob
 import os
 import sys
@@ -45,16 +46,19 @@ def check_variant(variant: str, deriv: str) -> bool:
     run_dir = os.path.join(deriv, "undistortme", variant, RUN)
     print(f"\n== {variant} ==")
     if not os.path.isdir(run_dir):
-        print(f"FAIL: no outputs at {run_dir}\n"
-              "Run the matching quick-test command from the README first.")
+        print(
+            f"FAIL: no outputs at {run_dir}\n"
+            "Run the matching quick-test command from the README first."
+        )
         return False
 
     corrected = sorted(glob.glob(os.path.join(run_dir, pattern)))
     print(f"corrected volumes found: {len(corrected)} (expected {N_EXPECTED})")
     ok = len(corrected) == N_EXPECTED
 
-    refs = sorted(glob.glob(os.path.join(EXAMPLES_DIR, "reference", variant,
-                                         "*.nii.gz")))
+    refs = sorted(
+        glob.glob(os.path.join(EXAMPLES_DIR, "reference", variant, "*.nii.gz"))
+    )
     print(f"{'volume':<28} {'correlation':>12}  result")
     for ref in refs:
         name = os.path.basename(ref)[:-3]  # strip .gz
@@ -78,14 +82,17 @@ def check_variant(variant: str, deriv: str) -> bool:
 
 
 def main() -> int:
-    deriv = sys.argv[1] if len(sys.argv) > 1 else os.path.join(
-        EXAMPLES_DIR, "derivatives")
+    deriv = (
+        sys.argv[1] if len(sys.argv) > 1 else os.path.join(EXAMPLES_DIR, "derivatives")
+    )
     ok = all([check_variant(v, deriv) for v in VARIANTS])
-    print("\nPASS: your installation reproduces the reference corrections."
-          if ok else
-          "\nFAIL: see above — missing runs or outputs deviating from the "
-          "references. Check the FSL/slicenii install and the exact commands "
-          "from the README.")
+    print(
+        "\nPASS: your installation reproduces the reference corrections."
+        if ok
+        else "\nFAIL: see above — missing runs or outputs deviating from the "
+        "references. Check the FSL/slicenii install and the exact commands "
+        "from the README."
+    )
     return 0 if ok else 1
 
 

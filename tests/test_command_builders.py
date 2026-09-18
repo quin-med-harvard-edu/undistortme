@@ -36,10 +36,10 @@ from undistortme import pipeline as cp
 # ---------------------------------------------------------------------------
 SUBJ = "sub-01"
 SESS = "ses-baseline"
-RUN  = "run-01"
-BV   = 3
-SV   = 7
-SUF  = "echo1-2"
+RUN = "run-01"
+BV = 3
+SV = 7
+SUF = "echo1-2"
 
 # The contrast-match invocation prefix (same-interpreter module run).
 _CONTRASTMATCH_PATH = cp.CONTRASTMATCH_CMD
@@ -62,10 +62,11 @@ def _make_slice_df(tmp_path):
 # convert_dcms
 # ===========================================================================
 
+
 class TestConvertDcms:
     def test_returns_dcm2niix_command(self, tmp_path):
         """convert_dcms builds a plain dcm2niix call."""
-        in_dir  = str(tmp_path / "source")
+        in_dir = str(tmp_path / "source")
         out_dir = str(tmp_path / "niftis")
 
         result = cp.convert_dcms(in_dir, out_dir)
@@ -75,7 +76,7 @@ class TestConvertDcms:
 
     def test_exact_command_string(self, tmp_path):
         """Full command string matches the f-string in the source exactly."""
-        in_dir  = str(tmp_path / "source")
+        in_dir = str(tmp_path / "source")
         out_dir = str(tmp_path / "niftis")
 
         result = cp.convert_dcms(in_dir, out_dir)
@@ -88,8 +89,7 @@ class TestConvertDcms:
             " -w 0"
             " -v 1"
             " -f sub-%i/ses-%t/run-%s_desc-%d/sub-%i_ses-%t_run-%s_desc-%d_echo-%e"
-            f" -o {out_dir} "
-            + in_dir
+            f" -o {out_dir} " + in_dir
         )
         assert result == expected
 
@@ -103,6 +103,7 @@ class TestConvertDcms:
 # ===========================================================================
 # get_fslmerge_command
 # ===========================================================================
+
 
 class TestGetFslmergeCommand:
     def _expected_filename(self, topup_dir):
@@ -121,10 +122,10 @@ class TestGetFslmergeCommand:
         )
 
         expected_fname = self._expected_filename(topup_dir)
-        expected_cmd   = f"fslmerge -t {expected_fname} {' '.join(file_list)}"
+        expected_cmd = f"fslmerge -t {expected_fname} {' '.join(file_list)}"
 
         assert fname == expected_fname
-        assert cmd   == expected_cmd
+        assert cmd == expected_cmd
 
     def test_skip_when_output_exists(self, tmp_path):
         """When the merged file already exists, command is None and path is returned."""
@@ -132,13 +133,13 @@ class TestGetFslmergeCommand:
         os.makedirs(topup_dir, exist_ok=True)
 
         expected_fname = self._expected_filename(topup_dir)
-        Path(expected_fname).touch()   # pre-create the output
+        Path(expected_fname).touch()  # pre-create the output
 
         cmd, fname = cp.get_fslmerge_command(
             SUBJ, SESS, RUN, BV, SV, topup_dir, ["a.nii", "b.nii"], SUF
         )
 
-        assert cmd   is None
+        assert cmd is None
         assert fname == expected_fname
 
 
@@ -146,29 +147,28 @@ class TestGetFslmergeCommand:
 # get_topup_command
 # ===========================================================================
 
+
 class TestGetTopupCommand:
     def _out_file_base(self, topup_dir, suffix=SUF):
         """Reproduce the out_file_base with the dot-to-dash replacement."""
-        raw = (
-            f"topup-result_{SUBJ}_{SESS}_{RUN}_bv-{BV}_sv-{SV}_{suffix}"
-        )
+        raw = f"topup-result_{SUBJ}_{SESS}_{RUN}_bv-{BV}_sv-{SV}_{suffix}"
         return os.path.join(topup_dir, raw.replace(".", "-"))
 
     def test_single_thread_exact_string(self, tmp_path, check_dict):
         """Single-thread topup command matches the source f-string exactly."""
-        topup_dir      = str(tmp_path / "topup")
-        acq_file       = str(tmp_path / "acq.txt")
-        config         = "b02b0.cnf"
-        merged         = str(tmp_path / "merged.nii")
+        topup_dir = str(tmp_path / "topup")
+        acq_file = str(tmp_path / "acq.txt")
+        config = "b02b0.cnf"
+        merged = str(tmp_path / "merged.nii")
 
         # check_dict["topup_multithread"] stays False (default from fixture)
         cmd, base = cp.get_topup_command(
             SUBJ, SESS, RUN, BV, SV, topup_dir, acq_file, config, merged, SUF
         )
 
-        expected_base  = self._out_file_base(topup_dir)
-        field_file     = expected_base + "_field.nii"
-        corr_file      = expected_base + "_desc-topupcorr.nii"
+        expected_base = self._out_file_base(topup_dir)
+        field_file = expected_base + "_field.nii"
+        corr_file = expected_base + "_desc-topupcorr.nii"
 
         expected_cmd = (
             f"topup --imain={merged}"
@@ -181,7 +181,7 @@ class TestGetTopupCommand:
         )
 
         assert base == expected_base
-        assert cmd  == expected_cmd
+        assert cmd == expected_cmd
         assert "--nthr=" not in cmd
 
     def test_dot_replaced_with_dash_in_suffix(self, tmp_path, check_dict):
@@ -190,8 +190,16 @@ class TestGetTopupCommand:
         topup_dir = str(tmp_path / "topup")
 
         cmd, base = cp.get_topup_command(
-            SUBJ, SESS, RUN, BV, SV, topup_dir,
-            "acq.txt", "b02b0.cnf", "merged.nii", suffix_with_dot
+            SUBJ,
+            SESS,
+            RUN,
+            BV,
+            SV,
+            topup_dir,
+            "acq.txt",
+            "b02b0.cnf",
+            "merged.nii",
+            suffix_with_dot,
         )
 
         # The replacement acts on the basename only; restrict check to avoid
@@ -206,8 +214,16 @@ class TestGetTopupCommand:
 
         topup_dir = str(tmp_path / "topup")
         cmd, base = cp.get_topup_command(
-            SUBJ, SESS, RUN, BV, SV, topup_dir,
-            "acq.txt", "b02b0.cnf", "merged.nii", SUF
+            SUBJ,
+            SESS,
+            RUN,
+            BV,
+            SV,
+            topup_dir,
+            "acq.txt",
+            "b02b0.cnf",
+            "merged.nii",
+            SUF,
         )
 
         assert cmd is not None
@@ -228,21 +244,30 @@ class TestGetTopupCommand:
         os.makedirs(topup_dir, exist_ok=True)
 
         expected_base = self._out_file_base(topup_dir)
-        corr_file     = expected_base + "_desc-topupcorr.nii"
-        Path(corr_file).touch()   # pre-create the checked output
+        corr_file = expected_base + "_desc-topupcorr.nii"
+        Path(corr_file).touch()  # pre-create the checked output
 
         cmd, base = cp.get_topup_command(
-            SUBJ, SESS, RUN, BV, SV, topup_dir,
-            "acq.txt", "b02b0.cnf", "merged.nii", SUF
+            SUBJ,
+            SESS,
+            RUN,
+            BV,
+            SV,
+            topup_dir,
+            "acq.txt",
+            "b02b0.cnf",
+            "merged.nii",
+            SUF,
         )
 
-        assert cmd  is None
+        assert cmd is None
         assert base == expected_base
 
 
 # ===========================================================================
 # get_applytopup_command
 # ===========================================================================
+
 
 class TestGetApplytopupCommand:
     def _out_file_base(self, topup_dir):
@@ -256,21 +281,29 @@ class TestGetApplytopupCommand:
 
     def test_match_off_inindex_equals_echo(self, tmp_path, check_dict):
         """match=False → inindex is the raw echo number."""
-        topup_dir  = str(tmp_path / "topup")
-        acq_file   = "acq.txt"
+        topup_dir = str(tmp_path / "topup")
+        acq_file = "acq.txt"
         topup_base = "topup_base"
 
         nii1 = str(tmp_path / "e1.nii")
         nii2 = str(tmp_path / "e2.nii")
 
         cmd_list, out_list = cp.get_applytopup_command(
-            SUBJ, SESS, RUN, BV, SV,
-            acq_file, topup_dir, topup_base,
-            [nii1, nii2], [1, 2], SUF
+            SUBJ,
+            SESS,
+            RUN,
+            BV,
+            SV,
+            acq_file,
+            topup_dir,
+            topup_base,
+            [nii1, nii2],
+            [1, 2],
+            SUF,
         )
 
-        base     = self._out_file_base(topup_dir)
-        ending   = self._ending(SV)
+        base = self._out_file_base(topup_dir)
+        ending = self._ending(SV)
 
         expected_out1 = base + "_echo-1" + ending
         expected_out2 = base + "_echo-2" + ending
@@ -292,29 +325,35 @@ class TestGetApplytopupCommand:
             " --method=jac"
         )
 
-        assert out_list  == [expected_out1, expected_out2]
-        assert cmd_list  == [expected_cmd1, expected_cmd2]
+        assert out_list == [expected_out1, expected_out2]
+        assert cmd_list == [expected_cmd1, expected_cmd2]
 
-    def test_match_on_odd_echo_gets_index1_even_gets_index2(
-        self, tmp_path, check_dict
-    ):
+    def test_match_on_odd_echo_gets_index1_even_gets_index2(self, tmp_path, check_dict):
         """match=True → odd echo → inindex=1; even echo → inindex=2.
 
         Source L1502: e = 2 if echo % 2 == 0 else 1
         """
         check_dict["match"] = True
 
-        topup_dir  = str(tmp_path / "topup")
-        acq_file   = "acq.txt"
+        topup_dir = str(tmp_path / "topup")
+        acq_file = "acq.txt"
         topup_base = "topup_base"
-        nii1       = str(tmp_path / "e1.nii")
-        nii2       = str(tmp_path / "e2.nii")
-        nii3       = str(tmp_path / "e3.nii")
+        nii1 = str(tmp_path / "e1.nii")
+        nii2 = str(tmp_path / "e2.nii")
+        nii3 = str(tmp_path / "e3.nii")
 
         cmd_list, _ = cp.get_applytopup_command(
-            SUBJ, SESS, RUN, BV, SV,
-            acq_file, topup_dir, topup_base,
-            [nii1, nii2, nii3], [1, 2, 3], SUF
+            SUBJ,
+            SESS,
+            RUN,
+            BV,
+            SV,
+            acq_file,
+            topup_dir,
+            topup_base,
+            [nii1, nii2, nii3],
+            [1, 2, 3],
+            SUF,
         )
 
         # echo 1 (odd)  → inindex=1
@@ -328,9 +367,7 @@ class TestGetApplytopupCommand:
         """slice_num is zero-padded to 3 digits in the output filename."""
         topup_dir = str(tmp_path / "topup")
         cmd_list, out_list = cp.get_applytopup_command(
-            SUBJ, SESS, RUN, BV, 5,
-            "acq.txt", topup_dir, "base",
-            ["e1.nii"], [1], SUF
+            SUBJ, SESS, RUN, BV, 5, "acq.txt", topup_dir, "base", ["e1.nii"], [1], SUF
         )
         # slice 5 → _sv-005.nii
         assert out_list[0].endswith("_sv-005.nii")
@@ -339,9 +376,7 @@ class TestGetApplytopupCommand:
         """slice_num=42 → _sv-042.nii  (2-digit padded to 3)."""
         topup_dir = str(tmp_path / "topup")
         cmd_list, out_list = cp.get_applytopup_command(
-            SUBJ, SESS, RUN, BV, 42,
-            "acq.txt", topup_dir, "base",
-            ["e1.nii"], [1], SUF
+            SUBJ, SESS, RUN, BV, 42, "acq.txt", topup_dir, "base", ["e1.nii"], [1], SUF
         )
         assert out_list[0].endswith("_sv-042.nii")
 
@@ -349,9 +384,17 @@ class TestGetApplytopupCommand:
         """Every generated applytopup command must include --method=jac."""
         topup_dir = str(tmp_path / "topup")
         cmd_list, _ = cp.get_applytopup_command(
-            SUBJ, SESS, RUN, BV, SV,
-            "acq.txt", topup_dir, "base",
-            ["e1.nii", "e2.nii"], [1, 2], SUF
+            SUBJ,
+            SESS,
+            RUN,
+            BV,
+            SV,
+            "acq.txt",
+            topup_dir,
+            "base",
+            ["e1.nii", "e2.nii"],
+            [1, 2],
+            SUF,
         )
         assert len(cmd_list) == 2
         for cmd in cmd_list:
@@ -363,22 +406,30 @@ class TestGetApplytopupCommand:
         topup_dir = str(tmp_path / "topup")
         os.makedirs(topup_dir, exist_ok=True)
 
-        base    = self._out_file_base(topup_dir)
-        ending  = self._ending(SV)
-        out1    = base + "_echo-1" + ending
-        out2    = base + "_echo-2" + ending
-        Path(out1).touch()   # pre-create only echo-1 output
+        base = self._out_file_base(topup_dir)
+        ending = self._ending(SV)
+        out1 = base + "_echo-1" + ending
+        out2 = base + "_echo-2" + ending
+        Path(out1).touch()  # pre-create only echo-1 output
 
         nii1 = str(tmp_path / "e1.nii")
         nii2 = str(tmp_path / "e2.nii")
 
         cmd_list, out_list = cp.get_applytopup_command(
-            SUBJ, SESS, RUN, BV, SV,
-            "acq.txt", topup_dir, "base",
-            [nii1, nii2], [1, 2], SUF
+            SUBJ,
+            SESS,
+            RUN,
+            BV,
+            SV,
+            "acq.txt",
+            topup_dir,
+            "base",
+            [nii1, nii2],
+            [1, 2],
+            SUF,
         )
 
-        assert cmd_list[0] is None,     "echo-1 output exists → command must be None"
+        assert cmd_list[0] is None, "echo-1 output exists → command must be None"
         assert cmd_list[1] is not None, "echo-2 output absent → command must be built"
         assert out_list == [out1, out2]
 
@@ -387,12 +438,13 @@ class TestGetApplytopupCommand:
 # get_slicenii_cmd
 # ===========================================================================
 
+
 class TestGetSliceniiCmd:
     def test_exact_command_string(self):
         """Output is the one-liner from source L1154; orientation_num is unused."""
-        nii_path    = "/some/path/img.nii"
-        slice_dir   = "/some/slice_dir"
-        orient_num  = 3
+        nii_path = "/some/path/img.nii"
+        slice_dir = "/some/slice_dir"
+        orient_num = 3
 
         result = cp.get_slicenii_cmd(nii_path, slice_dir, orient_num)
 
@@ -410,12 +462,13 @@ class TestGetSliceniiCmd:
 # get_combinenii_cmd
 # ===========================================================================
 
+
 class TestGetCombineniiCmd:
     def test_exact_command_string(self):
         """Output matches the one-liner in source L1160-L1162."""
-        in_dir          = "/input_dir"
-        ref_nii         = "/ref.nii"
-        start_string    = "sub-01"
+        in_dir = "/input_dir"
+        ref_nii = "/ref.nii"
+        start_string = "sub-01"
         output_filename = "/out.nii"
 
         result = cp.get_combinenii_cmd(in_dir, ref_nii, start_string, output_filename)
@@ -431,18 +484,17 @@ class TestGetCombineniiCmd:
 # linear_contrast_match
 # ===========================================================================
 
+
 class TestLinearContrastMatch:
     def test_contains_hardcoded_contrastmatch_path(self, tmp_path):
         """Command must contain the literal hardcoded path to contrastmatch.py.
 
         Known refactor target — pinned as-is.
         """
-        ave_dir  = str(tmp_path / "ave")
+        ave_dir = str(tmp_path / "ave")
         slice_df = _make_slice_df(tmp_path)
 
-        cmd, _ = cp.linear_contrast_match(
-            SUBJ, SESS, RUN, BV, SV, slice_df, ave_dir
-        )
+        cmd, _ = cp.linear_contrast_match(SUBJ, SESS, RUN, BV, SV, slice_df, ave_dir)
 
         assert cmd is not None
         assert _CONTRASTMATCH_PATH in cmd, (
@@ -452,7 +504,7 @@ class TestLinearContrastMatch:
 
     def test_exact_command_string(self, tmp_path):
         """Full linear_contrast_match command matches source L335."""
-        ave_dir  = str(tmp_path / "ave")
+        ave_dir = str(tmp_path / "ave")
         slice_df = _make_slice_df(tmp_path)
 
         e1 = str(tmp_path / "e1.nii")
@@ -474,17 +526,15 @@ class TestLinearContrastMatch:
             SUBJ, SESS, RUN, BV, SV, slice_df, ave_dir
         )
 
-        assert cmd   == expected_cmd
+        assert cmd == expected_cmd
         assert files == [cm_file, str(tmp_path / "e2.nii")]
 
     def test_no_geomean_flag(self, tmp_path):
         """Linear method must NOT contain '-m geomean'."""
-        ave_dir  = str(tmp_path / "ave")
+        ave_dir = str(tmp_path / "ave")
         slice_df = _make_slice_df(tmp_path)
 
-        cmd, _ = cp.linear_contrast_match(
-            SUBJ, SESS, RUN, BV, SV, slice_df, ave_dir
-        )
+        cmd, _ = cp.linear_contrast_match(SUBJ, SESS, RUN, BV, SV, slice_df, ave_dir)
         assert cmd is not None
         assert "-m geomean" not in cmd
 
@@ -512,18 +562,17 @@ class TestLinearContrastMatch:
 # geomean_contrast_match
 # ===========================================================================
 
+
 class TestGeomeanContrastMatch:
     def test_contains_hardcoded_contrastmatch_path(self, tmp_path):
         """Command must contain the literal hardcoded path to contrastmatch.py.
 
         Known refactor target — pinned as-is.
         """
-        ave_dir  = str(tmp_path / "ave")
+        ave_dir = str(tmp_path / "ave")
         slice_df = _make_slice_df(tmp_path)
 
-        cmd, _ = cp.geomean_contrast_match(
-            SUBJ, SESS, RUN, BV, SV, slice_df, ave_dir
-        )
+        cmd, _ = cp.geomean_contrast_match(SUBJ, SESS, RUN, BV, SV, slice_df, ave_dir)
 
         assert cmd is not None
         assert _CONTRASTMATCH_PATH in cmd, (
@@ -533,19 +582,17 @@ class TestGeomeanContrastMatch:
 
     def test_contains_m_geomean_flag(self, tmp_path):
         """geomean method appends ' -m geomean' (source L382)."""
-        ave_dir  = str(tmp_path / "ave")
+        ave_dir = str(tmp_path / "ave")
         slice_df = _make_slice_df(tmp_path)
 
-        cmd, _ = cp.geomean_contrast_match(
-            SUBJ, SESS, RUN, BV, SV, slice_df, ave_dir
-        )
+        cmd, _ = cp.geomean_contrast_match(SUBJ, SESS, RUN, BV, SV, slice_df, ave_dir)
 
         assert cmd is not None
         assert "-m geomean" in cmd
 
     def test_exact_command_string(self, tmp_path):
         """Full geomean command matches source L381-L382."""
-        ave_dir  = str(tmp_path / "ave")
+        ave_dir = str(tmp_path / "ave")
         slice_df = _make_slice_df(tmp_path)
 
         e1 = str(tmp_path / "e1.nii")
@@ -568,7 +615,7 @@ class TestGeomeanContrastMatch:
             SUBJ, SESS, RUN, BV, SV, slice_df, ave_dir
         )
 
-        assert cmd   == expected_cmd
+        assert cmd == expected_cmd
         assert files == [cm_file, str(tmp_path / "e2.nii")]
 
     def test_skip_when_cm_file_exists(self, tmp_path):

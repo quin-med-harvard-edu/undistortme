@@ -23,3 +23,8 @@ venv/
 derivatives/
 sourcedata/
 undistortme-work/
+
+# ...except the bundled phantom example dataset and its reference outputs
+# (examples/derivatives/ stays ignored via the derivatives/ rule above)
+!examples/sub-example/**/*.nii
+!examples/reference/**/*.nii.gz

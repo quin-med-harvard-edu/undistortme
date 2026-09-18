@@ -50,9 +50,12 @@ def test_tiny_nii_fill(tmp_path, tiny_nii):
 
 
 def test_check_dict_initial_state(check_dict):
-    """All gates start False."""
+    """All gates start off: the boolean ones False, "denoise" (a method) None."""
     for key in check_dict:
-        assert cp.check_dict[key] is False, f"Expected {key!r} to be False"
+        if key == "denoise":
+            assert cp.check_dict[key] is None
+        else:
+            assert cp.check_dict[key] is False, f"Expected {key!r} to be False"
 
 
 def test_check_dict_gate_flip(check_dict):
@@ -78,4 +81,5 @@ def test_contrastmatch_command_shape():
     """Pin the contrastmatch invocation (the snapshot placeholder is derived
     from this constant, so snapshots alone cannot catch a regression here)."""
     import sys
+
     assert cp.CONTRASTMATCH_CMD == f"{sys.executable} -m undistortme.contrastmatch"

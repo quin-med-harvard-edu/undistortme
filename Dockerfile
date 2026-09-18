@@ -49,8 +49,9 @@ COPY --from=slicenii-builder --chmod=0755 /src/slicenii/target/release/combineni
 
 # The package itself
 COPY --chown=mambauser:mambauser . /src/undistortme
-# [test] extra included so the image can self-verify (see image.yml smoke step)
-RUN pip install --no-cache-dir "/src/undistortme[test]"
+# [test] extra included so the image can self-verify (see image.yml smoke step);
+# [denoise] brings dipy so --denoise mppca works in the image
+RUN pip install --no-cache-dir "/src/undistortme[test,denoise]"
 
 USER mambauser
 WORKDIR /data

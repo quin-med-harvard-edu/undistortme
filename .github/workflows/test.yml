@@ -17,10 +17,13 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install package
-        run: pip install -e ".[test]"
+        run: pip install -e ".[test,dev]"
+      - name: Formatting is pinned
+        run: ruff format --check .
       - name: Entry points resolve
         run: |
           undistortme --help
           undistortme-contrastmatch --help
+          undistortme-denoise --help
       - name: Run default test suite (no external binaries required)
         run: python -m pytest tests/ -v

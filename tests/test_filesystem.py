@@ -87,7 +87,7 @@ from undistortme import pipeline as cp
 # ---------------------------------------------------------------------------
 SUBJ = "sub-01"
 SESS = "ses-baseline"
-RUN  = "run-01"
+RUN = "run-01"
 READOUT = 0.106487
 
 # Path to committed golden files
@@ -98,9 +98,14 @@ _GOLDEN = Path(__file__).parent / "_golden"
 # Helpers
 # ===========================================================================
 
-def _write_json(path: Path, echo_num: int, phase_dir: str,
-                readout: float = READOUT,
-                orientation: list | None = None) -> Path:
+
+def _write_json(
+    path: Path,
+    echo_num: int,
+    phase_dir: str,
+    readout: float = READOUT,
+    orientation: list | None = None,
+) -> Path:
     """Write a minimal JSON sidecar that get_echo_info can read."""
     data = {
         "EchoNumber": echo_num,
@@ -116,12 +121,17 @@ def _write_json(path: Path, echo_num: int, phase_dir: str,
     return path
 
 
-def _make_sidecar_tree(run_dir: Path, stem: str, *, n_vols: int,
-                       bvals: list[str] | None = None,
-                       sidecar_overrides: dict | None = None,
-                       echo_num: int = 1,
-                       phase_dir: str = "j-",
-                       orientation: list | None = None) -> Path:
+def _make_sidecar_tree(
+    run_dir: Path,
+    stem: str,
+    *,
+    n_vols: int,
+    bvals: list[str] | None = None,
+    sidecar_overrides: dict | None = None,
+    echo_num: int = 1,
+    phase_dir: str = "j-",
+    orientation: list | None = None,
+) -> Path:
     """Create a JSON sidecar and the expected nii files for get_echo_info.
 
     Nii naming follows the source convention:
@@ -160,12 +170,12 @@ def _make_sidecar_tree(run_dir: Path, stem: str, *, n_vols: int,
     return json_path
 
 
-def _make_run_df(echoes: list[int], phase_dir: str,
-                 readout: float = READOUT) -> pd.DataFrame:
+def _make_run_df(
+    echoes: list[int], phase_dir: str, readout: float = READOUT
+) -> pd.DataFrame:
     """Return a minimal run_df with echo, phase_dir, readout_time columns."""
     rows = [
-        {"echo": e, "phase_dir": phase_dir, "readout_time": readout}
-        for e in echoes
+        {"echo": e, "phase_dir": phase_dir, "readout_time": readout} for e in echoes
     ]
     return pd.DataFrame(rows)
 
@@ -173,6 +183,7 @@ def _make_run_df(echoes: list[int], phase_dir: str,
 # ===========================================================================
 # find_files
 # ===========================================================================
+
 
 class TestFindFiles:
     """find_files is a sorted glob wrapper (see TestFindFilesOrdering)."""
@@ -220,6 +231,7 @@ class TestFindFiles:
 # check_for_bvals
 # ===========================================================================
 
+
 class TestCheckForBvals:
     """check_for_bvals reads dir_dict["current_dir"] for *.bval files."""
 
@@ -240,7 +252,7 @@ class TestCheckForBvals:
         )
 
         assert num_bvals == 3
-        assert bvals_str == bval_content   # raw, un-stripped
+        assert bvals_str == bval_content  # raw, un-stripped
         assert len(bval_paths) == 1
         assert Path(bval_paths[0]).name == "sub-01_run-01.bval"
 
@@ -280,7 +292,7 @@ class TestCheckForBvals:
         """The returned string is the raw file.read(), preserving trailing newline."""
         curr_dir = tmp_path / "run"
         curr_dir.mkdir()
-        bval_content = "0 1000 2000\n"   # trailing newline
+        bval_content = "0 1000 2000\n"  # trailing newline
         (curr_dir / "sub-01.bval").write_text(bval_content)
 
         _, bvals_str, _ = cp.check_for_bvals({"current_dir": str(curr_dir)})
@@ -292,6 +304,7 @@ class TestCheckForBvals:
 # ===========================================================================
 # make_acq_params  (golden tests)
 # ===========================================================================
+
 
 class TestMakeAcqParams:
     """make_acq_params writes acqparams.txt; phase_sign=(-1)**(echo+1).
@@ -320,7 +333,7 @@ class TestMakeAcqParams:
 
         acq_file = cp.make_acq_params(SUBJ, SESS, RUN, run_df, str(topup_dir))
 
-        actual   = Path(acq_file).read_text()
+        actual = Path(acq_file).read_text()
         expected = self._golden_path("acqparams_3echo_jminus_nomatch.txt").read_text()
         assert actual == expected, (
             f"Acqparams content differs from golden.\n"
@@ -345,7 +358,7 @@ class TestMakeAcqParams:
 
         acq_file = cp.make_acq_params(SUBJ, SESS, RUN, run_df, str(topup_dir))
 
-        actual   = Path(acq_file).read_text()
+        actual = Path(acq_file).read_text()
         expected = self._golden_path("acqparams_3echo_jminus_match.txt").read_text()
         assert actual == expected, (
             f"Acqparams content differs from golden.\n"
@@ -367,7 +380,7 @@ class TestMakeAcqParams:
 
         acq_file = cp.make_acq_params(SUBJ, SESS, RUN, run_df, str(topup_dir))
 
-        actual   = Path(acq_file).read_text()
+        actual = Path(acq_file).read_text()
         expected = self._golden_path("acqparams_2echo_i.txt").read_text()
         assert actual == expected, (
             f"Acqparams content differs from golden.\n"
@@ -389,7 +402,7 @@ class TestMakeAcqParams:
 
         acq_file = cp.make_acq_params(SUBJ, SESS, RUN, run_df, str(topup_dir))
 
-        actual   = Path(acq_file).read_text()
+        actual = Path(acq_file).read_text()
         expected = self._golden_path("acqparams_2echo_k.txt").read_text()
         assert actual == expected, (
             f"Acqparams content differs from golden.\n"
@@ -483,10 +496,10 @@ class TestMakeAcqParams:
         topup_b.mkdir()
 
         run_df_jminus = _make_run_df([1, 2], "j-")
-        run_df_j      = _make_run_df([1, 2], "j")
+        run_df_j = _make_run_df([1, 2], "j")
 
         file_a = cp.make_acq_params(SUBJ, SESS, RUN, run_df_jminus, str(topup_a))
-        file_b = cp.make_acq_params(SUBJ, SESS, RUN, run_df_j,      str(topup_b))
+        file_b = cp.make_acq_params(SUBJ, SESS, RUN, run_df_j, str(topup_b))
 
         content_a = Path(file_a).read_bytes()
         content_b = Path(file_b).read_bytes()
@@ -500,21 +513,37 @@ class TestMakeAcqParams:
 # get_echo_info
 # ===========================================================================
 
+
 class TestGetEchoInfo:
     """get_echo_info parses a JSON sidecar and locates associated nii files."""
 
     EXPECTED_KEYS = {
-        "json_path", "echo", "bvals", "bvals_list", "nii_list",
-        "phase_dir", "phase_sign", "echo_time", "readout_time",
-        "pulse_sequence", "series_description", "image_type",
-        "orientation_list", "orientation_rounded", "slice_orientation",
+        "json_path",
+        "echo",
+        "bvals",
+        "bvals_list",
+        "nii_list",
+        "phase_dir",
+        "phase_sign",
+        "echo_time",
+        "readout_time",
+        "pulse_sequence",
+        "series_description",
+        "image_type",
+        "orientation_list",
+        "orientation_rounded",
+        "slice_orientation",
         "orientation_num",
     }
 
-    def _write_sidecar_and_niis(self, run_dir: Path, echo_num: int,
-                                  num_niis: int,
-                                  phase_dir: str = "j-",
-                                  orientation: list | None = None) -> Path:
+    def _write_sidecar_and_niis(
+        self,
+        run_dir: Path,
+        echo_num: int,
+        num_niis: int,
+        phase_dir: str = "j-",
+        orientation: list | None = None,
+    ) -> Path:
         """Create a JSON sidecar and the expected nii files for get_echo_info.
 
         Delegates to the module-level _make_sidecar_tree helper which encodes
@@ -522,7 +551,8 @@ class TestGetEchoInfo:
         """
         stem = f"sub-01_echo-{echo_num}"
         return _make_sidecar_tree(
-            run_dir, stem,
+            run_dir,
+            stem,
             n_vols=num_niis,
             echo_num=echo_num,
             phase_dir=phase_dir,
@@ -554,20 +584,26 @@ class TestGetEchoInfo:
         assert result["echo_time"] == 0.07
         assert result["readout_time"] == READOUT
 
-    def test_with_bval_file_three_bvals(self, tmp_path):
+    @pytest.mark.parametrize("dirname", ["run", "jsondata"])
+    def test_with_bval_file_three_bvals(self, tmp_path, dirname):
         """With a .bval file containing 3 values → bvals=3, bvals_list parsed.
 
-        Source: bval_path = json_path.replace("json", "bval") (substring).
+        Source: bval_path = splitext(json_path)[0] + ".bval" (extension swap).
         bvals_list = f.read().split() → list of string tokens.
         nii names: {stem}_{bb}.nii where bb=str(i).zfill(len("3"))="1","2","3".
+
+        "jsondata" is the regression case: the old code substring-replaced
+        "json"→"bval" over the WHOLE path, so a directory name containing
+        "json" made it look in /bvaldata/ and silently miss the bval file.
         """
-        run_dir = tmp_path / "run"
+        run_dir = tmp_path / dirname
         run_dir.mkdir()
         stem = "sub-01_echo-1"
         # _make_sidecar_tree uses the zfill convention; 3 vols → num_digits=1,
         # so bb in {"1","2","3"} — same as the previous inline loop.
         json_path = _make_sidecar_tree(
-            run_dir, stem,
+            run_dir,
+            stem,
             n_vols=3,
             bvals=["0", "1000", "2000"],
             echo_num=1,
@@ -585,7 +621,9 @@ class TestGetEchoInfo:
         run_dir = tmp_path / "run"
         run_dir.mkdir()
         json_path = self._write_sidecar_and_niis(
-            run_dir, echo_num=1, num_niis=1,
+            run_dir,
+            echo_num=1,
+            num_niis=1,
             orientation=[1, 0, 0, 0, 1, 0],
         )
 
@@ -600,7 +638,9 @@ class TestGetEchoInfo:
         run_dir = tmp_path / "run"
         run_dir.mkdir()
         json_path = self._write_sidecar_and_niis(
-            run_dir, echo_num=1, num_niis=1,
+            run_dir,
+            echo_num=1,
+            num_niis=1,
             orientation=[1, 0, 0, 0, 0, -1],
         )
 
@@ -614,7 +654,9 @@ class TestGetEchoInfo:
         run_dir = tmp_path / "run"
         run_dir.mkdir()
         json_path = self._write_sidecar_and_niis(
-            run_dir, echo_num=1, num_niis=1,
+            run_dir,
+            echo_num=1,
+            num_niis=1,
             orientation=[0, 1, 0, 0, 0, -1],
         )
 
@@ -629,7 +671,9 @@ class TestGetEchoInfo:
         run_dir.mkdir()
         # Oblique orientation — doesn't match any canonical pattern
         json_path = self._write_sidecar_and_niis(
-            run_dir, echo_num=1, num_niis=1,
+            run_dir,
+            echo_num=1,
+            num_niis=1,
             orientation=[0.707, 0.707, 0, 0, 0, -1],
         )
 
@@ -688,11 +732,18 @@ class TestGetEchoInfo:
 # set_dirs
 # ===========================================================================
 
+
 class TestSetDirs:
     """set_dirs returns a directory dict; reads check_dict for conditional keys."""
 
-    ALWAYS_PRESENT = {"current_dir", "ave_dir", "work_dir", "work_root",
-                      "topup_dir", "inner_dir"}
+    ALWAYS_PRESENT = {
+        "current_dir",
+        "ave_dir",
+        "work_dir",
+        "work_root",
+        "topup_dir",
+        "inner_dir",
+    }
 
     def _make_current_dir(self, tmp_path):
         """Create the current_dir structure that set_dirs expects."""
@@ -712,9 +763,7 @@ class TestSetDirs:
         assert "slice_dir" not in result
         assert "masked_dir" not in result
 
-    def test_slice_true_adds_slice_dir_and_per_slice_prefix(
-        self, tmp_path, check_dict
-    ):
+    def test_slice_true_adds_slice_dir_and_per_slice_prefix(self, tmp_path, check_dict):
         """slice=True → inner_dir starts with 'per-slice'; 'slice_dir' key added."""
         check_dict["slice"] = True
         output_dir, deriv_dir = self._make_current_dir(tmp_path)
@@ -734,9 +783,7 @@ class TestSetDirs:
         assert result["inner_dir"] == "whole-volume_contrast-matched"
         assert "masked_dir" not in result
 
-    def test_mask_true_appends_masked_and_adds_masked_dir(
-        self, tmp_path, check_dict
-    ):
+    def test_mask_true_appends_masked_and_adds_masked_dir(self, tmp_path, check_dict):
         """mask=True → '_masked' appended to inner_dir; 'masked_dir' key added."""
         check_dict["mask"] = True
         output_dir, deriv_dir = self._make_current_dir(tmp_path)
@@ -750,7 +797,7 @@ class TestSetDirs:
         """All three flags True → inner_dir='per-slice_contrast-matched_masked'."""
         check_dict["slice"] = True
         check_dict["match"] = True
-        check_dict["mask"]  = True
+        check_dict["mask"] = True
         output_dir, deriv_dir = self._make_current_dir(tmp_path)
 
         result = cp.set_dirs(SUBJ, SESS, RUN, str(output_dir), str(deriv_dir))
@@ -808,26 +855,40 @@ class TestFindFilesOrdering:
             (tmp_path / name).touch()
         result = cp.find_files(str(tmp_path), "*.nii")
         assert result == sorted(result)
-        assert [p.rsplit("/", 1)[-1] for p in result] == \
-            ["a.nii", "b.nii", "c.nii"]
+        assert [p.rsplit("/", 1)[-1] for p in result] == ["a.nii", "b.nii", "c.nii"]
 
 
 # ===========================================================================
 # get_run_info
 # ===========================================================================
 
+
 class TestGetRunInfo:
     """get_run_info builds a DataFrame from JSON sidecars in curr_dir."""
 
     EXPECTED_COLUMNS = {
-        "subject", "session", "run", "echo", "bvol_num", "bval", "nii",
-        "echo_time", "readout_time", "phase_dir", "slice_orientation",
-        "orientation_num", "pulse_sequence", "series_description",
-        "image_type", "orientation_list", "orientation_rounded",
+        "subject",
+        "session",
+        "run",
+        "echo",
+        "bvol_num",
+        "bval",
+        "nii",
+        "echo_time",
+        "readout_time",
+        "phase_dir",
+        "slice_orientation",
+        "orientation_num",
+        "pulse_sequence",
+        "series_description",
+        "image_type",
+        "orientation_list",
+        "orientation_rounded",
     }
 
-    def _setup_run_dir(self, run_dir: Path, echoes: int, vols_per_echo: int,
-                       with_bvals: bool = False) -> Path:
+    def _setup_run_dir(
+        self, run_dir: Path, echoes: int, vols_per_echo: int, with_bvals: bool = False
+    ) -> Path:
         """Create JSON sidecars and nii files for get_run_info.
 
         Delegates to _make_sidecar_tree for each echo, which encodes the
@@ -840,7 +901,8 @@ class TestGetRunInfo:
                 # bval_path = json_path.replace("json", "bval") — substring
                 bval_tokens = [str(i * 500) for i in range(vols_per_echo)]
                 _make_sidecar_tree(
-                    run_dir, stem,
+                    run_dir,
+                    stem,
                     n_vols=vols_per_echo,
                     bvals=bval_tokens,
                     echo_num=e,
@@ -849,7 +911,8 @@ class TestGetRunInfo:
             else:
                 # No bval: average mode.
                 _make_sidecar_tree(
-                    run_dir, stem,
+                    run_dir,
+                    stem,
                     n_vols=vols_per_echo,
                     echo_num=e,
                     phase_dir="j-",
@@ -874,7 +937,7 @@ class TestGetRunInfo:
 
         df = cp.get_run_info(str(run_dir), SUBJ, SESS, RUN)
 
-        assert len(df) == 4   # 2 echoes × 2 averages
+        assert len(df) == 4  # 2 echoes × 2 averages
 
     def test_bval_is_none_without_bval_file(self, tmp_path):
         """Without .bval file, bval column contains None."""
@@ -932,7 +995,7 @@ class TestGetRunInfo:
 
         df = cp.get_run_info(str(run_dir), SUBJ, SESS, RUN)
 
-        assert len(df) == 6   # 2 echoes × 3 bvals
+        assert len(df) == 6  # 2 echoes × 3 bvals
 
     def test_subject_session_run_columns(self, tmp_path):
         """subject, session, run columns match the passed arguments."""
@@ -950,6 +1013,7 @@ class TestGetRunInfo:
 # ===========================================================================
 # rename_entity
 # ===========================================================================
+
 
 class TestRenameEntity:
     """rename_entity removes dots from the stem (not extension), renames on disk."""
@@ -1031,6 +1095,7 @@ class TestRenameEntity:
 # ===========================================================================
 # rename_entities
 # ===========================================================================
+
 
 class TestRenameEntities:
     """rename_entities renames the root dir and walks the tree renaming all names."""
