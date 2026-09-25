@@ -34,9 +34,9 @@ denoise = ["dipy>=1.12"]
 dev = ["ruff==0.16.6"]
 
 [project.urls]
-Homepage = "https://github.com/liamtimms/undistortme"
-Repository = "https://github.com/liamtimms/undistortme"
-Issues = "https://github.com/liamtimms/undistortme/issues"
+Homepage = "https://github.com/quin-med-harvard-edu/undistortme"
+Repository = "https://github.com/quin-med-harvard-edu/undistortme"
+Issues = "https://github.com/quin-med-harvard-edu/undistortme/issues"
 
 [project.scripts]
 undistortme = "undistortme.pipeline:main"

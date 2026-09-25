@@ -25,7 +25,7 @@ FROM mambaorg/micromamba:1.5-noble
 
 LABEL org.opencontainers.image.title="undistortme" \
       org.opencontainers.image.description="Susceptibility distortion correction for multi-echo EPI via FSL TOPUP" \
-      org.opencontainers.image.source="https://github.com/liamtimms/undistortme" \
+      org.opencontainers.image.source="https://github.com/quin-med-harvard-edu/undistortme" \
       org.opencontainers.image.licenses="MIT AND LicenseRef-FSL-NonCommercial"
 
 # FSL pieces (topup/applytopup, fslmerge/fslmaths) from Oxford's channel,

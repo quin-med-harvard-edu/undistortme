@@ -1,5 +1,6 @@
 .git
 .github
+.claude
 **/__pycache__
 *.egg-info
 build
@@ -8,8 +9,14 @@ dist
 venv
 .pytest_cache
 .mypy_cache
-*.nii
-*.nii.gz
-derivatives
-sourcedata
-undistortme-work
+.ruff_cache
+**/*.nii
+**/*.nii.gz
+**/derivatives
+**/sourcedata
+**/undistortme-work
+
+# the bundled phantom example stays in the image because the README's
+# "Check a pulled image" section runs it
+!examples/sub-example/**/*.nii
+!examples/reference/**/*.nii.gz

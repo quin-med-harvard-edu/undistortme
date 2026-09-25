@@ -30,12 +30,12 @@ Underlying libraries and tools leveraged here, notably TOPUP, have their own lis
 The image bundles Python, FSL's TOPUP components, dcm2niix, and slicenii —
 you need only Docker.
 
-```bash # prebuilt image (published for releases v0.1.0 and later)
+```bash # prebuilt image (published for releases v0.2.0 and later)
 docker run --rm --user "$(id -u):$(id -g)" -v "$PWD":/data \
-    ghcr.io/liamtimms/undistortme -i /data/sourcedata -o /data -d -t
+    ghcr.io/quin-med-harvard-edu/undistortme:0.2.0 -i /data/sourcedata -o /data -d -t
 
 # or build it yourself
-git clone https://github.com/liamtimms/undistortme
+git clone https://github.com/quin-med-harvard-edu/undistortme
 docker build -t undistortme undistortme/
 docker run --rm --user "$(id -u):$(id -g)" -v "$PWD":/data \
     undistortme -i /data/sourcedata -o /data -d -t
@@ -45,9 +45,28 @@ docker run --rm --user "$(id -u):$(id -g)" -v "$PWD":/data \
 user; without it, the container's internal user usually cannot write to the
 mounted directory (and any files it did write would not be owned by you).
 
-Images are published to `ghcr.io/liamtimms/undistortme` (`:<version>` and
+Images are published to `ghcr.io/quin-med-harvard-edu/undistortme` (`:<version>` and
 `:latest`) by CI whenever a `v*` tag is pushed; before the first tagged
 release, build locally as shown above.
+
+### Check a pulled image
+
+The image bundles a small phantom example and its reference outputs, so this
+check needs no clone and takes a few minutes; PASS for both variants means
+the image works on your machine.
+
+```bash
+IMG=ghcr.io/quin-med-harvard-edu/undistortme:0.2.0
+mkdir undistortme-check && cd undistortme-check
+docker run --rm --user "$(id -u):$(id -g)" -v "$PWD":/data $IMG \
+    -o /src/undistortme/examples -t -c /src/undistortme/configs/pervol.cnf \
+    --derivdir /data/derivatives
+docker run --rm --user "$(id -u):$(id -g)" -v "$PWD":/data $IMG \
+    -o /src/undistortme/examples -t -s -m -c /src/undistortme/configs/perslice_1.cnf \
+    --derivdir /data/derivatives
+docker run --rm -v "$PWD":/data --entrypoint python $IMG \
+    /src/undistortme/examples/verify_example.py /data/derivatives
+```
 
 > **FSL licensing:** the image contains FSL, which the University of Oxford
 > licenses for **non-commercial use only**
@@ -103,7 +122,7 @@ python3 examples/verify_example.py
 Requires Python ≥ 3.10 (CI tests 3.10 / 3.12 / 3.14).
 
 ```bash
-pip install git+https://github.com/liamtimms/undistortme
+pip install git+https://github.com/quin-med-harvard-edu/undistortme
 ```
 
 Plus, on your `PATH`:
@@ -383,7 +402,7 @@ estimation on.
 ## Developer Testing
 
 ```bash
-git clone https://github.com/liamtimms/undistortme && cd undistortme
+git clone https://github.com/quin-med-harvard-edu/undistortme && cd undistortme
 pip install -e ".[test]"
 python -m pytest tests/                                 # no FSL needed
 python -m pytest tests/test_smoke_fsl.py -m "slow or needs_fsl"  # real FSL phantom

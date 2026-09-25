@@ -28,3 +28,6 @@ undistortme-work/
 # (examples/derivatives/ stays ignored via the derivatives/ rule above)
 !examples/sub-example/**/*.nii
 !examples/reference/**/*.nii.gz
+
+# local Claude Code worktrees and settings
+.claude/
